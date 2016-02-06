@@ -18,20 +18,11 @@
 
 PROGRAM = procrank
 
-PREFIX ?= $(DESTDIR)/usr
-BINDIR ?= $(PREFIX)/bin
-
-PROGRAM_TARGET = $(BINDIR)/$(PROGRAM)
-
 # LOCAL_CFLAGS := -Wall -Wextra -Wformat=2 -Werror
 LOCAL_CFLAGS := -Wall
 
 $(PROGRAM): $(PROGRAM).c libpagemap/libpagemap.a
 	$(CROSS_COMPILE)gcc $(LOCAL_CFLAGS) $(PROGRAM).c -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
-
-$(PROGRAM_TARGET) : $(PROGRAM)
-	install -d $(BINDIR)
-	install -m 0755 $^ $@
 
 libpagemap/libpagemap.a:
 	make -C libpagemap
@@ -40,4 +31,8 @@ clean:
 	rm -f $(PROGRAM)
 	make -C libpagemap clean
 
-install: ${PROGRAM_TARGET}
+install: $(PROGRAM)
+	install -m 0755 $(PROGRAM) $(DESTDIR)/bin
+
+.PHONY: clean install
+
