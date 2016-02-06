@@ -26,8 +26,7 @@ LOCAL_OBJ_FILES := \
 	strlcpy.o
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
-CC = $(CROSS_COMPILE)gcc
-CFLAGS = -Wall -I$(LOCAL_C_INCLUDES) -c -D_LARGEFILE64_SOURCE
+CFLAGS += -Wall -I$(LOCAL_C_INCLUDES) -c -D_LARGEFILE64_SOURCE
 
 all: libpagemap.a
 

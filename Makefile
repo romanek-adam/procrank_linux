@@ -18,11 +18,13 @@
 
 PROGRAM = procrank
 
+all: $(PROGRAM)
+
 # LOCAL_CFLAGS := -Wall -Wextra -Wformat=2 -Werror
 LOCAL_CFLAGS := -Wall
 
 $(PROGRAM): $(PROGRAM).c libpagemap/libpagemap.a
-	$(CROSS_COMPILE)gcc $(LOCAL_CFLAGS) $(PROGRAM).c -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
+	$(CC) $(LOCAL_CFLAGS) $(PROGRAM).c -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
 
 libpagemap/libpagemap.a:
 	make -C libpagemap
@@ -33,6 +35,3 @@ clean:
 
 install: $(PROGRAM)
 	install -m 0755 $(PROGRAM) $(DESTDIR)/bin
-
-.PHONY: clean install
-
