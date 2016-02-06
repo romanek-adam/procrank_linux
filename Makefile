@@ -16,22 +16,36 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #
 
-PROGRAM = procrank
-
-all: $(PROGRAM)
-
 # LOCAL_CFLAGS := -Wall -Wextra -Wformat=2 -Werror
 LOCAL_CFLAGS := -Wall
 
-$(PROGRAM): $(PROGRAM).c libpagemap/libpagemap.a
-	$(CC) $(LOCAL_CFLAGS) $(PROGRAM).c -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
+.PHONY : clean uninstall
+
+prefix ?= /usr
+exec_prefix ?= $(prefix)
+bindir ?= $(exec_prefix)/bin
+
+PROGRAM_SRC = procrank.c
+PROGRAM_BIN = procrank
+PROGRAM_TGT = $(DESTDIR)$(bindir)/$(PROGRAM_bin)
+
+all : $(PROGRAM_BIN)
+
+$(PROGRAM_BIN) : $(PROGRAM_SRC) libpagemap/libpagemap.a
+	$(CC) $(LOCAL_CFLAGS) $(PROGRAM_SRC) -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
+
+$(PROGRAM_TGT) : $(PROGRAM_BIN)
+	install -d $(DESTDIR)$(bindir)
+	install -m 0755 $^ $@
 
 libpagemap/libpagemap.a:
 	make -C libpagemap
 
-clean:
-	rm -f $(PROGRAM)
+clean :
+	rm -f $(PROGRAM_BIN)
 	make -C libpagemap clean
 
-install: $(PROGRAM)
-	install -m 0755 $(PROGRAM) $(DESTDIR)/bin
+install : $(PROGRAM_TGT)
+
+uninstall :
+	rm -f $(PROGRAM_TGT)
