@@ -25,14 +25,16 @@ prefix ?= /usr
 exec_prefix ?= $(prefix)
 bindir ?= $(exec_prefix)/bin
 
-PROGRAM_SRC = procrank.c
+PROGRAM_SRC = procrank.cpp
 PROGRAM_BIN = procrank
 PROGRAM_TGT = $(DESTDIR)$(bindir)/$(PROGRAM_bin)
+
+CXXFLAGS = -std=c++14
 
 all : $(PROGRAM_BIN)
 
 $(PROGRAM_BIN) : $(PROGRAM_SRC) libpagemap/libpagemap.a
-	$(CC) $(LOCAL_CFLAGS) $(PROGRAM_SRC) -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
+	$(CXX) $(CXXFLAGS) $(LOCAL_CFLAGS) $(PROGRAM_SRC) -Ilibpagemap/include -Llibpagemap -lpagemap -o procrank
 
 $(PROGRAM_TGT) : $(PROGRAM_BIN)
 	install -d $(DESTDIR)$(bindir)
