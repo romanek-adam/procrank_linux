@@ -21,8 +21,20 @@
 #include <stdio.h>
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <sys/queue.h>
+
+#include <linux/kernel-page-flags.h>
 
 __BEGIN_DECLS
+
+typedef struct pm_proportional_swap pm_proportional_swap_t;
+
+typedef struct pm_swap_offset pm_swap_offset_t;
+
+struct pm_swap_offset {
+    unsigned int offset;
+    SIMPLEQ_ENTRY(pm_swap_offset) simpleqe;
+};
 
 typedef struct pm_memusage pm_memusage_t;
 
@@ -33,12 +45,32 @@ struct pm_memusage {
     size_t pss;
     size_t uss;
     size_t swap;
+    /* if non NULL then use swap_offset_list to compute proportional swap */
+    pm_proportional_swap_t *p_swap;
+    SIMPLEQ_HEAD(simpleqhead, pm_swap_offset) swap_offset_list;
+};
+
+typedef struct pm_swapusage pm_swapusage_t;
+struct pm_swapusage {
+    size_t proportional;
+    size_t unique;
 };
 
 /* Clears a memusage. */
 void pm_memusage_zero(pm_memusage_t *mu);
 /* Adds one memusage (a) to another (b). */
 void pm_memusage_add(pm_memusage_t *a, pm_memusage_t *b);
+/* Adds a swap offset */
+void pm_memusage_pswap_add_offset(pm_memusage_t *mu, unsigned int offset);
+/* Enable proportional swap computing. */
+void pm_memusage_pswap_init_handle(pm_memusage_t *mu, pm_proportional_swap_t *p_swap);
+/* Computes and return the proportional swap */
+void pm_memusage_pswap_get_usage(pm_memusage_t *mu, pm_swapusage_t *su);
+void pm_memusage_pswap_free(pm_memusage_t *mu);
+/* Initialize a proportional swap computing handle:
+   assumes only 1 swap device, total swap size of this device in bytes to be given as argument */
+pm_proportional_swap_t * pm_memusage_pswap_create(int swap_size);
+void pm_memusage_pswap_destroy(pm_proportional_swap_t *p_swap);
 
 typedef struct pm_kernel   pm_kernel_t;
 typedef struct pm_process  pm_process_t;
@@ -94,38 +126,10 @@ int pm_kernel_pids(pm_kernel_t *ker, pid_t **pids_out, size_t *len);
 int pm_kernel_count(pm_kernel_t *ker, uint64_t pfn, uint64_t *count_out);
 
 /* Get the page flags (from /proc/kpageflags) of a physical frame.
- * The count is returned through *flags_out. */
+ * Flag constants are in <linux/kernel-page-flags.h>.
+ * The count is returned through *flags_out.
+ */
 int pm_kernel_flags(pm_kernel_t *ker, uint64_t pfn, uint64_t *flags_out);
-
-#define PM_PAGE_LOCKED     (1 <<  0)
-#define PM_PAGE_ERROR      (1 <<  1)
-#define PM_PAGE_REFERENCED (1 <<  2)
-#define PM_PAGE_UPTODATE   (1 <<  3)
-#define PM_PAGE_DIRTY      (1 <<  4)
-#define PM_PAGE_LRU        (1 <<  5)
-#define PM_PAGE_ACTIVE     (1 <<  6)
-#define PM_PAGE_SLAB       (1 <<  7)
-#define PM_PAGE_WRITEBACK  (1 <<  8)
-#define PM_PAGE_RECLAIM    (1 <<  9)
-#define PM_PAGE_BUDDY      (1 << 10)
-
-/* for kernels >= 2.6.31 */
-#define PM_PAGE_MMAP          (1 << 11)
-#define PM_PAGE_ANON          (1 << 12)
-#define PM_PAGE_SWAPCACHE     (1 << 13)
-#define PM_PAGE_SWAPBACKED    (1 << 14)
-#define PM_PAGE_COMPOUND_HEAD (1 << 15)
-#define PM_PAGE_COMPOUND_TAIL (1 << 16)
-#define PM_PAGE_HUGE          (1 << 17)
-#define PM_PAGE_UNEVICTABLE   (1 << 18)
-#define PM_PAGE_HWPOISON      (1 << 19)
-#define PM_PAGE_NOPAGE        (1 << 20)
-
-/* for kernels >= 2.6.32 */
-#define PM_PAGE_KSM           (1 << 21)
-
-/* for kernels >= 3.4 */
-#define PM_PAGE_THP           (1 << 22)
 
 /* Destroy a pm_kernel_t. */
 int pm_kernel_destroy(pm_kernel_t *ker);
@@ -150,13 +154,13 @@ int pm_process_usage_flags(pm_process_t *proc, pm_memusage_t *usage_out,
 int pm_process_workingset(pm_process_t *proc, pm_memusage_t *ws_out, int reset);
 
 /* Get the PFNs corresponding to a range of virtual addresses.
- * The array of PFNs is returned through *range_out, and the caller has the 
+ * The array of PFNs is returned through *range_out, and the caller has the
  * responsibility to free it. */
 int pm_process_pagemap_range(pm_process_t *proc,
                              uint64_t low, uint64_t hi,
                              uint64_t **range_out, size_t *len);
 
-#define _BITS(x, offset, bits) (((x) >> offset) & ((1LL << (bits)) - 1))
+#define _BITS(x, offset, bits) (((x) >> (offset)) & ((1LL << (bits)) - 1))
 
 #define PM_PAGEMAP_PRESENT(x)     (_BITS(x, 63, 1))
 #define PM_PAGEMAP_SWAPPED(x)     (_BITS(x, 62, 1))
@@ -167,7 +171,7 @@ int pm_process_pagemap_range(pm_process_t *proc,
 
 /* Get the maps in the virtual address space of this process.
  * Returns an array of pointers to pm_map_t through *maps.
- * The array should be freed by the caller, but the maps should not be 
+ * The array should be freed by the caller, but the maps should not be
  * modified or destroyed. */
 int pm_process_maps(pm_process_t *proc, pm_map_t ***maps_out, size_t *len);
 
