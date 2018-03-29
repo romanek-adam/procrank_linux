@@ -1,3 +1,7 @@
+# REPOSITORY INFORMATION
+
+This repo is a fork of [RobertBerger/procrank_linux](https://github.com/RobertBerger/procrank_linux) repo, with source code updated to upstream ([AOSP/platform/system/extras](https://android.googlesource.com/platform/system/extras/)) master from 2018-03-21. The most interesting part of this update is per-process SWAP accounting.
+
 # Display true memory usage using procrank
 
 procrank is a tool commonly used by Android platform developers to find out
